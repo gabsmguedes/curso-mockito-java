@@ -12,8 +12,13 @@ import br.com.alura.leilao.model.Pagamento;
 @Service
 public class GeradorDePagamento {
 
-	@Autowired
+//	@Autowired
 	private PagamentoDao pagamentos;
+
+	@Autowired
+	public GeradorDePagamento(PagamentoDao pagamentoDao) {
+		this.pagamentos = pagamentoDao;
+	}
 
 	public void gerarPagamento(Lance lanceVencedor) {
 		LocalDate vencimento = LocalDate.now().plusDays(1);

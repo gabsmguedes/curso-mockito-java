@@ -4,6 +4,7 @@ import br.com.alura.leilao.dao.LeilaoDao;
 import br.com.alura.leilao.model.Lance;
 import br.com.alura.leilao.model.Leilao;
 import br.com.alura.leilao.model.Usuario;
+import br.com.alura.leilao.service.EnviadorDeEmails;
 import br.com.alura.leilao.service.FinalizarLeilaoService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,10 +24,13 @@ public class FinalizarLeilaoServiceTest {
     @Mock
     private LeilaoDao mockLeilaoDao;
 
+    @Mock
+    private EnviadorDeEmails enviadorDeEmails;
+
     @BeforeEach
     public void beforeEach() {
         MockitoAnnotations.initMocks(this);
-        this.service = new FinalizarLeilaoService(mockLeilaoDao);
+        this.service = new FinalizarLeilaoService(mockLeilaoDao, enviadorDeEmails);
     }
 
     @Test
@@ -38,6 +42,29 @@ public class FinalizarLeilaoServiceTest {
         Assertions.assertTrue(leilao.isFechado());
         Assertions.assertEquals(new BigDecimal("900"), leilao.getLanceVencedor().getValor());
         Mockito.verify(mockLeilaoDao).salvar(leilao);
+    }
+
+    @Test
+    void deveriaEnviarEmailParaVencedorDoLeilao() {
+        List<Leilao> leiloes = leiloes();
+        Mockito.when(mockLeilaoDao.buscarLeiloesExpirados()).thenReturn(leiloes);
+        service.finalizarLeiloesExpirados();
+        Leilao leilao = leiloes.get(0);
+        Lance lanceVencedor = leilao.getLanceVencedor();
+        Mockito.verify(enviadorDeEmails).enviarEmailVencedorLeilao(lanceVencedor);
+    }
+
+    @Test
+    void naoDeveriaEnviarEmailParaVencedorDoLeilaoEmCasoDeErroAoEncerrarOLeilao() {
+        List<Leilao> leiloes = leiloes();
+        Mockito.when(mockLeilaoDao.buscarLeiloesExpirados()).thenReturn(leiloes);
+        Mockito.when(mockLeilaoDao.salvar(Mockito.any())).thenThrow(RuntimeException.class);
+        try {
+            service.finalizarLeiloesExpirados();
+            Mockito.verifyNoInteractions(enviadorDeEmails);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     private List<Leilao> leiloes() {
